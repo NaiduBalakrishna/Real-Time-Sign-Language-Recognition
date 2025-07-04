@@ -87,7 +87,7 @@ Real-Time-Sign-Language-Recognition/
 
 **Bala Krishna**  
 Developer & AI Enthusiast  
-[GitHub](https://github.com/NaiduBalakrishna) | [LinkedIn](#) *(Add your profile if available)*
+[GitHub](https://github.com/NaiduBalakrishna) | [LinkedIn](#) *(https://www.linkedin.com/in/NaiduBalakrishna/)*
 
 ## 🤝 Contributing
 
