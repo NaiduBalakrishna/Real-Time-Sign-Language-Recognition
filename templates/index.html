@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language Recognition</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: 'Poppins', sans-serif;
+            background: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
+        h1 {
+            margin-top: 20px;
+            font-size: 2.5em;
+            color: #444;
+        }
+        .container {
+            display: flex;
+            width: 90%;
+            max-width: 1200px;
+            margin-top: 20px;
+        }
+        .video-container {
+            flex: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #video-feed {
+            width: 100%;
+            border: 3px solid #ccc;
+            border-radius: 10px;
+            display: none;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .detected-signs {
+            flex: 1;
+            background: #ffffff;
+            padding: 15px;
+            margin-left: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            height: 300px;
+            text-align: left;
+            font-size: 1.2em;
+        }
+        #sign-text {
+            word-wrap: break-word;
+        }
+        .btn-container {
+            margin-top: 10px;
+        }
+        button {
+            padding: 12px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: 0.3s;
+            font-weight: bold;
+            background: #ddd;
+            color: #333;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        #start-btn { background: #90caf9; }
+        #stop-btn { background: #f48fb1; display: none; }
+        #fullscreen-btn { background: #aed581; }
+        #mute-btn { background: #ffcc80; }
+        #unmute-btn { background: #ffb74d; display: none; }
+
+        #start-btn:hover { background: #64b5f6; }
+        #stop-btn:hover { background: #f06292; }
+        #fullscreen-btn:hover { background: #81c784; }
+        #mute-btn:hover, #unmute-btn:hover { background: #ff9800; }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            .detected-signs {
+                width: 100%;
+                margin-left: 0;
+                margin-top: 20px;
+            }
+        }
+    </style>
+    <script>
+        let isMuted = false;
+        let isCameraOn = false;
+        let synth = window.speechSynthesis;
+
+        function startCamera() {
+            fetch('/start_camera')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "started" || data.status === "already running") {
+                    document.getElementById('video-feed').src = "/video_feed";
+                    document.getElementById('video-feed').style.display = "block";
+                    document.getElementById("start-btn").style.display = "none";
+                    document.getElementById("stop-btn").style.display = "inline-block";
+                    isCameraOn = true;
+                } else {
+                    alert("Failed to start camera!");
+                }
+            });
+        }
+
+        function stopCamera() {
+            fetch('/stop_camera')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "stopped" || data.status === "already stopped") {
+                    document.getElementById('video-feed').src = "";
+                    document.getElementById('video-feed').style.display = "none";
+                    document.getElementById("start-btn").style.display = "inline-block";
+                    document.getElementById("stop-btn").style.display = "none";
+                    isCameraOn = false;
+                }
+            });
+        }
+
+        function toggleFullscreen() {
+            let videoFeed = document.getElementById('video-feed');
+            if (videoFeed.requestFullscreen) {
+                videoFeed.requestFullscreen();
+            } else if (videoFeed.mozRequestFullScreen) { 
+                videoFeed.mozRequestFullScreen();
+            } else if (videoFeed.webkitRequestFullscreen) { 
+                videoFeed.webkitRequestFullscreen();
+            } else if (videoFeed.msRequestFullscreen) { 
+                videoFeed.msRequestFullscreen();
+            }
+        }
+
+        function fetchDetectedSigns() {
+            fetch('/get_detected_signs')
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    updateSignBox(data.join(" ")); 
+                    if (!isMuted) {
+                        speakText(data.join(" "));
+                    }
+                }
+            })
+            .catch(error => console.error('Error fetching detected signs:', error));
+        }
+
+        function updateSignBox(newText) {
+            let signTextElement = document.getElementById("sign-text");
+            signTextElement.innerText += " " + newText;  
+        }
+
+        function speakText(text) {
+            if (!isMuted) {
+                let utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1;  
+                utterance.volume = 1; 
+                synth.speak(utterance);
+            }
+        }
+
+        function muteSpeech() {
+            isMuted = true;
+            synth.cancel(); 
+            document.getElementById("mute-btn").style.display = "none";
+            document.getElementById("unmute-btn").style.display = "inline-block";
+        }
+
+        function unmuteSpeech() {
+            isMuted = false;
+            document.getElementById("mute-btn").style.display = "inline-block";
+            document.getElementById("unmute-btn").style.display = "none";
+        }
+
+        setInterval(fetchDetectedSigns, 2000);  
+    </script>
+</head>
+<body>
+    <h1>Sign Language Recognition</h1>
+    
+    <div class="btn-container">
+        <button id="start-btn" onclick="startCamera()">Start Camera</button>
+        <button id="stop-btn" onclick="stopCamera()">Stop Camera</button>
+        <button id="fullscreen-btn" onclick="toggleFullscreen()">Fullscreen</button>
+        <button id="mute-btn" onclick="muteSpeech()">Mute</button>
+        <button id="unmute-btn" onclick="unmuteSpeech()">Unmute</button>
+    </div>
+
+    <div class="container">
+        <div class="video-container">
+            <img id="video-feed" alt="Live Feed">
+        </div>
+        <div class="detected-signs">
+            <h3>Detected Signs:</h3>
+            <p id="sign-text"></p>
+        </div>
+    </div>
+</body>
+</html>
